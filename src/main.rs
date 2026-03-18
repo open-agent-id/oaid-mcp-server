@@ -18,7 +18,7 @@ MCP server for AI agents to use Open Agent ID credentials securely.
 USAGE:
     oaid-mcp-server                    Run MCP server (stdio)
     oaid-mcp-server encrypt <file>     Encrypt a credential file (interactive)
-    oaid-mcp-server encrypt-stdin --passphrase <pass> --output <path>
+    OAID_PASSPHRASE=<pass> oaid-mcp-server encrypt-stdin --output <path>
                                        Encrypt credential JSON from stdin
     oaid-mcp-server help               Show this help message
 
@@ -64,16 +64,11 @@ async fn main() {
                 return;
             }
             "encrypt-stdin" => {
-                // Parse --passphrase and --output flags
-                let mut passphrase: Option<String> = None;
+                // Parse --output flag; passphrase comes from OAID_PASSPHRASE env var
                 let mut output: Option<String> = None;
                 let mut i = 2;
                 while i < args.len() {
                     match args[i].as_str() {
-                        "--passphrase" => {
-                            i += 1;
-                            passphrase = args.get(i).cloned();
-                        }
                         "--output" => {
                             i += 1;
                             output = args.get(i).cloned();
@@ -85,12 +80,10 @@ async fn main() {
                     }
                     i += 1;
                 }
-                let passphrase = passphrase.unwrap_or_else(|| {
-                    eprintln!("Usage: oaid-mcp-server encrypt-stdin --passphrase <pass> --output <path>");
-                    process::exit(1);
-                });
+                let passphrase = std::env::var("OAID_PASSPHRASE")
+                    .unwrap_or_else(|_| rpassword::prompt_password("Passphrase: ").unwrap());
                 let output = output.unwrap_or_else(|| {
-                    eprintln!("Usage: oaid-mcp-server encrypt-stdin --passphrase <pass> --output <path>");
+                    eprintln!("Usage: OAID_PASSPHRASE=<pass> oaid-mcp-server encrypt-stdin --output <path>");
                     process::exit(1);
                 });
 

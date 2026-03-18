@@ -166,7 +166,7 @@ pub fn encrypt_file(input_path: &str) -> Result<String, String> {
 
     // Generate salt and derive key
     use rand::RngCore;
-    let mut salt = [0u8; 16];
+    let mut salt = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut salt);
 
     let key = derive_key(&passphrase, &salt)?;
@@ -210,7 +210,7 @@ pub fn encrypt_stdin(plaintext: &[u8], passphrase: &str, output_path: &str) -> R
 
     // Generate salt and derive key
     use rand::RngCore;
-    let mut salt = [0u8; 16];
+    let mut salt = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut salt);
 
     let key = derive_key(passphrase, &salt)?;
