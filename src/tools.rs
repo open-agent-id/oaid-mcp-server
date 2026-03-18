@@ -169,6 +169,19 @@ fn encrypt_for(
 }
 
 // ---------------------------------------------------------------------------
+// Input validation
+// ---------------------------------------------------------------------------
+
+/// Validate that a DID is well-formed and safe for use in URL paths.
+fn validate_did(did: &str) -> bool {
+    did.starts_with("did:oaid:")
+        && !did.contains("..")
+        && !did.contains('?')
+        && !did.contains('#')
+        && !did.contains('/')
+}
+
+// ---------------------------------------------------------------------------
 // Tool dispatch
 // ---------------------------------------------------------------------------
 
@@ -232,6 +245,9 @@ async fn tool_check_credit(args: &Value) -> Result<Value, String> {
         .get("did")
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: did")?;
+    if !validate_did(did) {
+        return Err("invalid DID format".to_string());
+    }
 
     let cred = get_cred()?;
     registry_get(cred, &format!("/v1/credit/{did}"), false).await
@@ -243,6 +259,9 @@ async fn tool_lookup_agent(args: &Value) -> Result<Value, String> {
         .get("did")
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: did")?;
+    if !validate_did(did) {
+        return Err("invalid DID format".to_string());
+    }
 
     let cred = get_cred()?;
     let data = registry_get(cred, &format!("/v1/agents/{did}"), false).await?;
@@ -275,6 +294,9 @@ async fn tool_send_message(args: &Value) -> Result<Value, String> {
         .get("to_did")
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: to_did")?;
+    if !validate_did(to_did) {
+        return Err("invalid DID format".to_string());
+    }
     let body = args
         .get("body")
         .ok_or("missing required parameter: body")?;
@@ -305,6 +327,9 @@ async fn tool_send_encrypted_message(args: &Value) -> Result<Value, String> {
         .get("to_did")
         .and_then(|v| v.as_str())
         .ok_or("missing required parameter: to_did")?;
+    if !validate_did(to_did) {
+        return Err("invalid DID format".to_string());
+    }
     let plaintext = args
         .get("plaintext")
         .and_then(|v| v.as_str())

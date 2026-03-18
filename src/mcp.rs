@@ -155,6 +155,9 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let mut lines = reader.lines();
 
     while let Some(line) = lines.next_line().await? {
+        if line.len() > 1_048_576 {
+            continue;
+        }
         let line = line.trim().to_string();
         if line.is_empty() {
             continue;
