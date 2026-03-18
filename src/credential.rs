@@ -153,15 +153,21 @@ pub fn encrypt_file(input_path: &str) -> Result<String, String> {
     let _: RawCredential = serde_json::from_slice(&plaintext)
         .map_err(|e| format!("invalid credential JSON: {e}"))?;
 
-    let passphrase =
-        rpassword::prompt_password("Enter passphrase to encrypt credential: ")
+    let passphrase = if let Ok(p) = std::env::var("OAID_PASSPHRASE") {
+        p
+    } else {
+        let p = rpassword::prompt_password("Enter passphrase to encrypt credential: ")
             .map_err(|e| format!("failed to read passphrase: {e}"))?;
-    let confirm =
-        rpassword::prompt_password("Confirm passphrase: ")
+        let confirm = rpassword::prompt_password("Confirm passphrase: ")
             .map_err(|e| format!("failed to read passphrase: {e}"))?;
+        if p != confirm {
+            return Err("passphrases do not match".into());
+        }
+        p
+    };
 
-    if passphrase != confirm {
-        return Err("passphrases do not match".into());
+    if passphrase.is_empty() {
+        return Err("passphrase cannot be empty".into());
     }
 
     // Generate salt and derive key
