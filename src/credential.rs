@@ -201,6 +201,50 @@ pub fn encrypt_file(input_path: &str) -> Result<String, String> {
     Ok(out_path.to_string_lossy().to_string())
 }
 
+/// Encrypt credential JSON read from stdin, writing to the given output path.
+/// Used by the install script so encryption format matches the Rust server exactly.
+pub fn encrypt_stdin(plaintext: &[u8], passphrase: &str, output_path: &str) -> Result<String, String> {
+    // Validate it's valid credential JSON
+    let _: RawCredential = serde_json::from_slice(plaintext)
+        .map_err(|e| format!("invalid credential JSON: {e}"))?;
+
+    // Generate salt and derive key
+    use rand::RngCore;
+    let mut salt = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut salt);
+
+    let key = derive_key(passphrase, &salt)?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|e| format!("failed to create cipher: {e}"))?;
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+
+    let ciphertext = cipher
+        .encrypt(&nonce, plaintext)
+        .map_err(|e| format!("encryption failed: {e}"))?;
+
+    // Build output: OAID_ENC\n{salt}\n{nonce}\n{ciphertext}\n
+    let output = format!(
+        "OAID_ENC\n{}\n{}\n{}\n",
+        STANDARD.encode(&salt),
+        STANDARD.encode(&nonce),
+        STANDARD.encode(&ciphertext),
+    );
+
+    let out_path = std::path::Path::new(output_path);
+    fs::write(out_path, &output)
+        .map_err(|e| format!("failed to write encrypted file: {e}"))?;
+
+    // chmod 600
+    let metadata = fs::metadata(out_path)
+        .map_err(|e| format!("failed to read file metadata: {e}"))?;
+    let mut perms = metadata.permissions();
+    perms.set_mode(0o600);
+    fs::set_permissions(out_path, perms)
+        .map_err(|e| format!("failed to set file permissions: {e}"))?;
+
+    Ok(output_path.to_string())
+}
+
 /// Read only the DID and agent_address from a credential file (for listing).
 /// Never loads the private key into a SigningKey.
 pub fn read_did_only(path: &str) -> Result<(String, String), String> {

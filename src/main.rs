@@ -17,7 +17,9 @@ MCP server for AI agents to use Open Agent ID credentials securely.
 
 USAGE:
     oaid-mcp-server                    Run MCP server (stdio)
-    oaid-mcp-server encrypt <file>     Encrypt a credential file
+    oaid-mcp-server encrypt <file>     Encrypt a credential file (interactive)
+    oaid-mcp-server encrypt-stdin --passphrase <pass> --output <path>
+                                       Encrypt credential JSON from stdin
     oaid-mcp-server help               Show this help message
 
 ENVIRONMENT VARIABLES:
@@ -53,6 +55,55 @@ async fn main() {
                     Ok(out_path) => {
                         eprintln!("Encrypted credential saved to: {out_path}");
                         eprintln!("You can now delete the plaintext file.");
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        process::exit(1);
+                    }
+                }
+                return;
+            }
+            "encrypt-stdin" => {
+                // Parse --passphrase and --output flags
+                let mut passphrase: Option<String> = None;
+                let mut output: Option<String> = None;
+                let mut i = 2;
+                while i < args.len() {
+                    match args[i].as_str() {
+                        "--passphrase" => {
+                            i += 1;
+                            passphrase = args.get(i).cloned();
+                        }
+                        "--output" => {
+                            i += 1;
+                            output = args.get(i).cloned();
+                        }
+                        _ => {
+                            eprintln!("Unknown flag: {}", args[i]);
+                            process::exit(1);
+                        }
+                    }
+                    i += 1;
+                }
+                let passphrase = passphrase.unwrap_or_else(|| {
+                    eprintln!("Usage: oaid-mcp-server encrypt-stdin --passphrase <pass> --output <path>");
+                    process::exit(1);
+                });
+                let output = output.unwrap_or_else(|| {
+                    eprintln!("Usage: oaid-mcp-server encrypt-stdin --passphrase <pass> --output <path>");
+                    process::exit(1);
+                });
+
+                use std::io::Read;
+                let mut plaintext = Vec::new();
+                std::io::stdin().read_to_end(&mut plaintext).unwrap_or_else(|e| {
+                    eprintln!("Failed to read stdin: {e}");
+                    process::exit(1);
+                });
+
+                match credential::encrypt_stdin(&plaintext, &passphrase, &output) {
+                    Ok(out_path) => {
+                        eprintln!("Encrypted credential saved to: {out_path}");
                     }
                     Err(e) => {
                         eprintln!("Error: {e}");
