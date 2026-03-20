@@ -44,7 +44,7 @@ fn tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "oaid_check_credit",
-            description: "Check the credit score of any agent by DID.",
+            description: "Check the credit score and trust level of any agent by DID. Returns credit score, tier level (flagged/basic/standard/verified), verification status, report counts, and registration date.",
             input_schema: json!({
                 "type": "object",
                 "properties": {

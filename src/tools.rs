@@ -250,9 +250,35 @@ async fn tool_check_credit(args: &Value) -> Result<Value, String> {
     }
 
     let cred = get_cred()?;
-    registry_get(cred, &format!("/v1/credit/{did}"), false).await
-}
+    let data = registry_get(cred, &format!("/v1/credit/{did}"), false).await?;
 
+    // Extract all fields from the credit response
+    let agent_did = data.get("did").and_then(|v| v.as_str()).unwrap_or(did);
+    let credit_score = data.get("credit_score").and_then(|v| v.as_i64()).unwrap_or(0);
+    let level = data.get("level").and_then(|v| v.as_str()).unwrap_or("unknown");
+    let verified = data.get("verified").and_then(|v| v.as_bool()).unwrap_or(false);
+    let flagged = data.get("flagged").and_then(|v| v.as_bool()).unwrap_or(false);
+    let active_reports = data.get("active_reports").and_then(|v| v.as_i64()).unwrap_or(0);
+    let lifetime_reports = data.get("lifetime_reports").and_then(|v| v.as_i64()).unwrap_or(0);
+    let registered_at = data.get("registered_at").and_then(|v| v.as_str()).unwrap_or("unknown");
+
+    Ok(json!({
+        "did": agent_did,
+        "credit_score": credit_score,
+        "level": level,
+        "verified": verified,
+        "flagged": flagged,
+        "active_reports": active_reports,
+        "lifetime_reports": lifetime_reports,
+        "registered_at": registered_at,
+        "summary": format!(
+            "Agent {agent_did}: credit score {credit_score} (level: {level}). \
+             Verified: {verified}. Flagged: {flagged}. \
+             Reports: {active_reports} active, {lifetime_reports} lifetime. \
+             Registered: {registered_at}."
+        ),
+    }))
+}
 /// 4. oaid_lookup_agent — GET {registry}/v1/agents/{did}, filter to safe fields.
 async fn tool_lookup_agent(args: &Value) -> Result<Value, String> {
     let did = args
